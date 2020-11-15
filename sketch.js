@@ -1,98 +1,93 @@
-let particle;
-let yoff = 0.0;
-let stars = [];
-
-function setup() {
-
-  createCanvas(700, 400);
-  particle = new Particle();
-
-for (let i = 0; i < 70; i++) {
-stars.push(new Star());
-}
-}
-
-function draw() {
-
-  background(20,20,70,30);
-
-  for (let i = 0; i < stars.length; i++) {
-    stars[i].display();
-   }
-
-  fill(random(200,255),95,95);
-  beginShape();
-
-  let xoff = 0;
-
-  for (let x = 200; x <= 500; x += 10) {
-    let y = map(noise(xoff, yoff), 0, 1, 500, 100);
-    vertex(x, y);
-    xoff += 0.1;
-  }
-
-  yoff += 0.01;
-  vertex(500, height);
-  vertex(200, height);
-  endShape(CLOSE);
-
-
-  let gravity = createVector(0, 0.08);
-
-  particle.applyForce(gravity);
-  particle.update();
-  particle.show();
-
-
-}
-
-class Star {
-  constructor() {
-    this.x = random(width);
-    this.y = random(height);
-    this.diameter = 5;
-  }
-
-  display() {
-    ellipse(this.x,this.y,this.diameter);
-
-    let s = random(1);
-if (s > 0.5){
-fill(255,228,0);
-}
-else {
-  fill(20,20,70);
-}
-  }
-}
-
 class Particle {
+  constructor(position) {
+    this.acceleration = createVector(0, 0.0);
+    this.velocity = createVector(random(-1, 1), random(-2, 0));
+    this.position = position.copy();
+    this.lifespan = 255.0;
+    this.mass = 1; // Let's do something better here!
+  }
 
-  constructor() {
-    this.pos = createVector(width / 2, height / 2);
-    this.vel = createVector(random(-3,3), random(-5,-4));
-    this.acc = createVector(0, 0);
-
+  run() {
+    this.update();
+    this.display();
   }
 
   applyForce(force) {
-    this.acc.add(force);
+    let f = force.copy();
+    f.div(this.mass);
+    this.acceleration.add(f);
   }
 
+  // Method to update position
   update() {
-    this.vel.add(this.acc);
-    this.pos.add(this.vel);
-    this.acc.set(0, 0);
+    this.velocity.add(this.acceleration);
+    this.position.add(this.velocity);
+    this.acceleration.mult(0);
+    this.lifespan -= 2.0;
   }
 
-  show() {
-    noStroke
-    fill(random(200,255),95,95);
-    ellipse(this.pos.x, this.pos.y, 12, 12);
-    if (this.pos.y > height) {
-    this.pos = createVector(width / 2, height / 2);
-    this.vel = createVector(random(-5,5), random(-6,-5));
-    this.acc = createVector(0, 0);
+  // Method to display
+  display() {
+    stroke(200, this.lifespan);
+    strokeWeight(2);
+    fill(127, this.lifespan);
+    ellipse(this.position.x, this.position.y, 12, 12);
+  }
+
+  // Is the particle still useful?
+  isDead() {
+    if (this.lifespan < 0.0) {
+      return true;
+    } else {
+      return false;
     }
   }
+}
+
+class ParticleSystem {
+  constructor(position) {
+    this.origin = position.copy();
+    this.particles = [];
+  }
+
+  addParticle() {
+    this.particles.push(new Particle(this.origin));
+  }
+
+  run() {
+    // Run every particle
+    // ES6 for..of loop
+    for (let particle of this.particles) {
+      particle.run();
+    }
+
+    // Filter removes any elements of the array that do not pass the test
+    this.particles = this.particles.filter(particle => !particle.isDead());
+  }
+
+  // A function to apply a force to all Particles
+  applyForce(f) {
+    for (let i = 0; i < this.particles.length; i++) {
+      this.particles[i].applyForce(f);
+    }
+  }
+}
+
+let ps;
+
+function setup() {
+  createCanvas(640, 360);
+  setFrameRate(60);
+  ps = new ParticleSystem(createVector(width / 2, 50));
+}
+
+function draw() {
+  background(51);
+
+  // Apply gravity force to all Particles
+  let gravity = createVector(0, 0.1);
+  ps.applyForce(gravity);
+
+  ps.addParticle();
+  ps.run();
 }
